@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>WebSocket Tester</title>
+        <script type='text/javascript' src="./jquery/jquery.js"></script>
+        <script type='text/javascript' src="./jquery/jquery-ui.js"></script>
+        <link type="text/css" rel="stylesheet" href="./jquery/jquery-ui.css"/>
+        <link type="text/css" rel="stylesheet" href="./codemirror/css/codemirror.css"/>
+        <link type="text/css" rel="stylesheet" href="./codemirror/css/fullscreen.css"/>
+        <link type="text/css" rel="stylesheet" href="./codemirror/css/lint.css">
+        <script type='text/javascript' src="./codemirror/js/codemirror.js"></script>
+        <script type='text/javascript' src="./codemirror/js/javascript.js"></script>
+        <script type='text/javascript' src="./codemirror/js/matchbrackets.js"></script>
+        <script type='text/javascript' src="./codemirror/js/closebrackets.js"></script>
+        <script type='text/javascript' src="./codemirror/js/foldcode.js"></script>
+        <script type='text/javascript' src="./codemirror/js/brace-fold.js"></script>
+        <script type='text/javascript' src="./codemirror/js/foldgutter.js"></script>
+        <script type='text/javascript' src="./codemirror/js/fullscreen.js"></script>
+        <script type='text/javascript' src="./codemirror/js/panel.js"></script>
+        <script type="text/javascript" src="./codemirror/js/jshint.js"></script>
+        <script type="text/javascript" src="./codemirror/js/lint.js"></script>
+        <script type="text/javascript" src="./codemirror/js/javascript-lint.js"></script>
+        <script type="text/javascript" src="./codemirror/js/json-lint.js"></script>
+        <script type="text/javascript" src="./codemirror/js/jsonlint.js"></script>
+        <script type='text/javascript' src="./app/js/websocket_tester.js"></script>
+        <link type="text/css" rel="stylesheet" href="./app/css/websocket_tester.css" />
+    </head>
+    <body>
+        <div id="banner">
+            <h2>Websocket Tester</h2>
+        </div>
+        <div id="connection-div">
+            <label for="socket-address">Address:</label>
+            <input type="text" id="socket-address" class="input-field">
+            <a href="#" id="connect-button" class="tester-button">Connect</a>
+            <a href="#" id="disconnect-button" class="tester-button">Disconnect</a>
+        </div>
+        <div id="error-div">
+            <p id="error-message"></p>
+        </div>
+        <div id="warning-div">
+            <p id="warning-message"></p>
+        </div>
+        <template id="tab-template">
+            <div id="new-tab-id" class="editor-tab">
+                <div class="tab-editor">
+                    <div class="button-panel">
+                        <span class="editor-button commit-button" onclick="launchCommit">Commit</span>
+                        <span class="editor-button save-button">Save</span>
+                        <span class="editor-button fullscreen-button">Full Screen</span>
+                    </div>
+                    <textarea></textarea>
+                </div>
+            </div>
+        </template>
+        <div id="editor-tabs">
+            <a href="#" id="open-tab-popup-button" class="tester-button">➕</a>
+            <ul id="tab-list">
+                <li><a href="#outgoing-message-div">Outgoing Messages</a></li>
+                <li><a id="output-tab-link" href="#incoming-message-div">Incoming Messages</a></li>
+            </ul>
+            <div id="outgoing-message-div" class="editor-tab">
+                <div id="outgoing-message-editor" class="tab-editor">
+                    <div id="outgoing-message-panel" class="button-panel">
+                        <span id="send-button" class="tester-button">Send</span>
+                        <span id="save-sender-button" class="editor-button">Save</span>
+                        <span id="fullscreen-sender-button" editor="sender" class="editor-button fullscreen-button">Full Screen</span>
+                    </div>
+                    <textarea id="outgoing-message-text"></textarea>
+                </div>
+            </div>
+            <div id="incoming-message-div" class="editor-tab">
+                <div id="incoming-message-display" class="tab-editor">
+                    <div id="incoming-message-toolbar" class="editor-toolbar">
+                        <span id="fullscreen-incoming-messages-button" editor="receiver" class="editor-button fullscreen-button">Full Screen</span>
+                        <span id="clear-incoming-messages-button" class="editor-button">Clear</span>
+                    </div>
+                    <textarea id="incoming-message-text"></textarea>
+                </div>
+            </div>
+        </div>
+        <div id="modal">
+            <div class="popup" id="raw-data-popup">
+                <div class="popup-header" id="raw-data-header">
+                    <h3>The entered data is not valid JSON</h3>
+                </div>
+                <pre id="raw-data-error"></pre>
+                <p>Do you want to send the raw data?</p>
+                <div id="raw-data-actions">
+                    <a href="#" id="send-raw-button" class="tester-button">Send</a>
+                    <a href="#" class="close-popup-button tester-button">Cancel</a>
+                </div>
+            </div>
+            <div class="popup" id="add-tab-popup">
+                <div class="popup-header" id="add-tab-popup-header">
+                    <h2>Add Tab</h2>
+                </div>
+                <div id="add-popup-fields">
+                    <label for="add-popup-name">Name:</label>
+                    <input list="previous-tabs" type="text" id="add-popup-name" onkeyup="addPopupNameUp(event)" class="input-field">
+                    <datalist id="previous-tabs">
+                    </datalist>
+                </div>
+                <div id="add-tab-actions">
+                    <a href="#" id="add-tab-button" class="tester-button">Send</a>
+                    <a href="#" class="close-popup-button tester-button">Cancel</a>
+                </div>
+            </div>
+            <div class="popup" id="commit-popup">
+                <div class="popup-header" id="commit-popup-header">
+                    <h2>Commit Text</h2>
+                </div>
+                <p>Commit code as text or as code?</p>
+                <p>Committing as code will attempt to run the given code as a script and save it for later use</p>
+                <p>
+                    Commiting as text will assign the code to a variable named
+                    <span id="commit-variable-name"></span> as a string
+                </p>
+                <input type="hidden" name="editor" id="editorName">
+                <div id="commit-actions">
+                    <a href="#" id="commit-code-button" class="tester-button" onclick="commitCode">Commit as Code</a>
+                    <a href="#" id="commit-text-button" class="tester-button" onclick="commitText">Commit as Text</a>
+                    <a href="#" class="close-popup-button tester-button">Cancel</a>
+                </div>
+            </div>
+        </div>
+        <div id="user-scripts" style="display: none;"></div>
+    </body>
+</html>

@@ -1,0 +1,63 @@
+#modal {
+    position: fixed;
+    display: none;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(195, 195, 252, 0.5);
+    z-index: 999;
+}
+
+.popup {
+    display: block;
+    width: fit-content;
+    padding: 10px;
+    border: 1px solid gray;
+    border-radius: 5px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: white;
+}
+
+.close-button {
+    border: 1px solid gray;
+    cursor: pointer;
+}
+
+.close-button:hover {
+    background-color: gray;
+}
+
+body {
+    height: 100vh;
+    margin: 0;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.CodeMirror {
+    border: 1px solid gray;
+    height: auto;
+    padding: 10px;
+}
+
+#editor-tabs {
+    height: 80%;
+    display: flex;
+    flex-direction: column;
+}
+
+.editor-tab {
+    height: 100%;
+}
+
+.tab-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
