@@ -1,26 +1,44 @@
 /**
- * The sessionStorage key used for storing the last used websocket address
+ * The STORAGE key used for storing the last used websocket address
  * Stored Address Key
  * @type {string}
  */
 const STORED_ADDRESS_KEY = "address";
 
 /**
- * The sessionStorage key used for storing data from the core editor
+ * The STORAGE key used for storing data from the core editor
  * Stored Input Key
  * @type {string}
  */
 const STORED_INPUT_KEY = "input";
 
 /**
- * The sessionStorage key used for saving user created tabs
+ * The STORAGE key used for saving user created tabs
  * Saved Tab Key
  * @type {string}
  */
 const SAVED_TAB_KEY = "saved_tabs";
 
 /**
- * The prefix for sessionStorage entries used to store editor information from user created tabs
+ * Prefix used to denote messages. Identifiers for messages should come afterwards
+ * @type {string}
+ */
+const SAVED_MESSAGE_PREFIX = "saved_message:";
+
+/**
+ * The maximum number of messages that will be stored. Older messages will be removed to make way for new messages
+ * @type {number}
+ */
+const MAXIMUM_SAVED_MESSAGES = 15;
+
+/**
+ * The storage mechanism used to store data
+ * @type {Storage}
+ */
+const STORAGE = localStorage;
+
+/**
+ * The prefix for STORAGE entries used to store editor information from user created tabs
  * Extra Storage Key
  * @type {string}
  */
@@ -30,7 +48,7 @@ const EXTRA_STORAGE_KEY = "extra_storage_"
  * A regular expression used to find invalid names for variables - those starting with a number or
  * containing characters that aren't alphanumeric
  * Invalid Variable Characters
- * @type {Object}
+ * @type {RegExp}
  */
 const INVALID_VARIABLE_CHARACTERS = /^[0-9]|[^a-zA-Z0-9_]/g;
 
@@ -131,7 +149,7 @@ const senderConfig = {
     /** Show line numbers for each number in a gutter */
     lineNumbers: true,
     /** Perform the lint operation on the contents of this editor */
-    lint: true,
+    lint: {esversion: 2020},
     /** Allow users to drag and drop json files into this editor */
     allowDropFileTypes: ['application/json'],
     /** Let the editor continuously scroll within its container */
@@ -169,7 +187,7 @@ const senderConfig = {
  * @return {number} The hash of the given string
  */
 function hashString(string){
-    var hash = 0, i, chr;
+    let hash = 0, i, chr;
     if (string.length === 0) {
         return hash;
     }
@@ -187,13 +205,13 @@ function hashString(string){
  */
 function connect(event) {
     // If the socket is already set and not closed, return - we're already connected.
-    if (socket != null  && socket.readyState != WebSocket.CLOSED) {
+    if (socket != null  && socket.readyState !== WebSocket.CLOSED) {
         console.log("Socket already connected - disconnect before trying to connect to a new one");
         return;
     }
 
     // Get the address to connect to from the address input
-    var address = $("#socket-address").val();
+    let address = $("#socket-address").val();
 
     // Display an error if no address was entered and exit
     if (!address) {
@@ -257,9 +275,9 @@ function connect(event) {
  * @param {Event} event - the data provided by an event handler, like a mouse click
  */
 function disconnect(event) {
-    // If there is a socket and it's closed, send a message stating the intentions of closing and close the active
+    // If there is a socket and it's closed send a message stating the intentions of closing and close the active
     //      connection
-    if (socket && socket.readyState != WebSocket.CLOSED) {
+    if (socket && socket.readyState !== WebSocket.CLOSED) {
         // Inform the socket of the intention to disconnect
         socket.send('"disconnect"');
 
@@ -301,10 +319,10 @@ function setConnectionIsEnabled() {
     //      whether you want to see it but based on whether you don't want to see it
 
     // Identify if the socket has current active and open
-    var alreadyConnected = socket != null && socket.readyState != WebSocket.CLOSED;
+    let alreadyConnected = socket != null && socket.readyState !== WebSocket.CLOSED;
 
     // Identify if the socket does not have a currently active socket
-    var alreadyDisconnected = !alreadyConnected;
+    let alreadyDisconnected = !alreadyConnected;
 
     // Disable the disconnect button if there's nothing to disconnect from
     $( "#disconnect-button" ).button( "option", "disabled", alreadyDisconnected );
@@ -318,11 +336,11 @@ function setConnectionIsEnabled() {
 
 /**
  * Add a new tab if the captured event registered the "Enter" key having been pressed
- * @param {Event} event - the data provided by an event handler, like a mouse click
+ * @param {MouseEvent} event - the data provided by an event handler, like a mouse click
  */
 function addPopupNameUp(event) {
     // Send the event to the addTab button if "Enter" was pressed
-    if (event.key == "Enter") {
+    if (event.key ==="Enter") {
         addTab(event);
     }
 }
@@ -388,7 +406,7 @@ function addUserScript(text) {
 
     // Create a new script element and add it to the page
     try {
-        var newScript = document.createElement("script");
+        let newScript = document.createElement("script");
         newScript.type = "text/javascript";
         newScript.innerHTML = text;
         $("#user-scripts").append(newScript);
@@ -407,12 +425,12 @@ function addUserScript(text) {
  */
 function send_message(event) {
     // Exit early if there isn't a socket available to send data through
-    if (socket == null || socket.readyState == WebSocket.CLOSED) {
+    if (socket ===null || socket.readyState ===WebSocket.CLOSED) {
         updateError("Data cannot be sent through a socket - there is no active connection. Connect and try again.");
         return;
     }
 
-    var enteredData = null;
+    let enteredData = null;
 
     // Attempt to parse data out from the sender
     try {
@@ -432,7 +450,7 @@ function send_message(event) {
 
     try {
         // Package the data up in a clean, easy to read form
-        enteredJSON = JSON.stringify(enteredData, null, 4);
+        const enteredJSON = JSON.stringify(enteredData, null, 4);
 
         // Throw an error if the data could not be serialized to be sent (highly unlikely at this point)
         if (!enteredJSON) {
@@ -498,16 +516,16 @@ function hidePopups(event) {
  */
 function getSenderValue() {
     // Grab the raw string that was in the editor
-    var senderText = sender.getValue();
+    let senderText = sender.getValue();
 
     // Create a list that will contain all keys of values that were subbed into the senderText
-    var usedValues = [];
+    let usedValues = [];
 
     // Iterate through every extra editor and try to find keys that need to be replaced
-    for (var key in extraTabEditors) {
+    for (let key in extraTabEditors) {
         // Create a replacement regex - this will replace things like `%%instructions%%` if an `instructions` editor
         //      is found
-        var replacer = `\%\%${key}\%\%`
+        let replacer = `\%\%${key}\%\%`
 
         // Replace text if it's found
         if (senderText.match(replacer)){
@@ -519,14 +537,14 @@ function getSenderValue() {
     }
 
     // Now iterate through every item in session storage to find other stuff to replace
-    for (var key in sessionStorage) {
+    for (let key in STORAGE) {
         // Move on if this key isn't data from another editor
         if (!key.startsWith(EXTRA_STORAGE_KEY)) {
             continue;
         }
 
         // Get the actual key for the stored value
-        var identifier = key.replace(EXTRA_STORAGE_KEY, "");
+        let identifier = key.replace(EXTRA_STORAGE_KEY, "");
 
         // Continue to the next key if we've already subbed in this data
         if (identifier in usedValues) {
@@ -534,11 +552,11 @@ function getSenderValue() {
         }
 
         // Create a regex like above which will look for the key surrounded by `%%`
-        var replacer = `\%\%${identifier}\%\%`;
+        let replacer = `\%\%${identifier}\%\%`;
 
         // If there is a match, fetch the data from storage and sub it into the sender text
         if (senderText.match(replacer)) {
-            var replacementData = sessionStorage.getItem(key);
+            let replacementData = STORAGE.getItem(key);
             senderText = senderText.replaceAll(replacer, replacementData);
         }
     }
@@ -554,10 +572,10 @@ function getSenderValue() {
  */
 function buildTab(tabID, name, text) {
     // Find the template used for new tabs
-    var tabTemplate = document.querySelector('#tab-template');
+    let tabTemplate = document.querySelector('#tab-template');
 
     // Copy the tab to create a new element
-    var newTab = document.importNode(tabTemplate.content, true);
+    let newTab = document.importNode(tabTemplate.content, true);
 
     // Set the new ID on the primary editor div
     newTab = newTab.querySelector("div.editor-tab");
@@ -589,10 +607,10 @@ function buildTab(tabID, name, text) {
     tabs.append(newTab);
 
     // Create the list item that will show up as the new tab
-    var tabEntry = document.createElement("li");
+    let tabEntry = document.createElement("li");
 
     // Create the anchor that will show the name and whose click will open the newly added tab
-    var tabLink = document.createElement("a");
+    let tabLink = document.createElement("a");
     tabLink.href = `#${tabID}`;
     tabLink.textContent = name;
 
@@ -624,8 +642,8 @@ function buildTab(tabID, name, text) {
     }
     else {
         // Check to see if matching data is present
-        var tabKey = EXTRA_STORAGE_KEY + tabID;
-        var previousData = sessionStorage.getItem(tabKey);
+        let tabKey = EXTRA_STORAGE_KEY + tabID;
+        let previousData = STORAGE.getItem(tabKey);
 
         // Insert matching data into the editor if it was found
         if (previousData) {
@@ -643,7 +661,7 @@ function buildTab(tabID, name, text) {
  */
 function send_raw_message(event) {
     try {
-        var data = getSenderValue();
+        let data = getSenderValue();
 
         if (data) {
             // Attempt to send the data from the editor through the socket
@@ -663,33 +681,196 @@ function send_raw_message(event) {
 }
 
 /**
+ * Generate a randomized ID
+ * @return {string}
+ */
+function generateID() {
+    return Math.floor(Math.random() * 1000).toString();
+}
+
+/**
+ * Replace values that might be obfuscated when stringified with tags
+ * @param {{string: *}|*} message An object or value that may contain values that will be obfuscated when stringified
+ * @param {{string: *}?} markers An optional map of predefined markers
+ * @return {{"message": {string: *}|*, "markers": {string: string}}} An object containing the transformed message and
+ *  a mapping from all contained tags to their values
+ */
+function markForReplacement(message, markers) {
+    if (markers == null) {
+        markers = {};
+    }
+
+    if (typeof message !== 'object') {
+        return {
+            "message": message,
+            "markers": markers
+        }
+    }
+
+    for (let [key, value] of Object.entries(message)){
+        if (typeof value === 'string') {
+            let newID = generateID();
+
+            while(Object.keys(markers).includes(newID)){
+                newID = generateID();
+            }
+
+            let marker = `{%${newID}%}`;
+
+            markers[marker] = value;
+            message[key] = marker;
+        }
+        else if (typeof value === "object") {
+            const markResults = markForReplacement(value, markers);
+            markers = markResults['markers'];
+            message[key] = markResults['message'];
+        }
+    }
+
+    return {
+        "message": message,
+        "markers": markers
+    }
+}
+
+/**
+ * Replace template markers in message with their proper values
+ * @param {string} message A message that might contain IDs that map to other values
+ * @param {{string: *}} markers A mapping of replacement tags to replacement values
+ * @return {string} A new string with all template tags replaced with their values
+ */
+function replaceMarkers(message, markers) {
+    for (let [ID, content] of Object.entries(markers)) {
+        message = message.replaceAll(ID, content);
+    }
+
+    return message;
+}
+
+/**
+ * Load all saved messages
+ * @return {{"timestamp": Date, "message": string, "key": string}[]} A list of all saved messages
+ */
+function readSavedMessages() {
+    let savedMessages = [];
+
+    for (let index = 0; index < sessionStorage.length; index++) {
+        let key = STORAGE.key(index);
+
+        if (key.startsWith(SAVED_MESSAGE_PREFIX)) {
+            let timestamp = new Date(key.replace(SAVED_MESSAGE_PREFIX, ""));
+            let message = STORAGE.getItem(key);
+            savedMessages.push({"timestamp": timestamp, "message": message, "key": key});
+        }
+    }
+
+    savedMessages = savedMessages.sort(
+        function(message1, message2){
+            return message1.timestamp - message2.timestamp;
+        }
+    );
+
+    return savedMessages;
+}
+
+/**
+ * A message to store in the tester
+ * @param {(string|Date)?} date When the message came in
+ * @param {string} message The message to store
+ */
+function storeMessage(date, message) {
+    try {
+        if (date === null || date instanceof undefined) {
+            date = new Date().toLocaleString();
+        } else if (date instanceof Date) {
+            date = date.toLocaleString();
+        }
+
+        const key = SAVED_MESSAGE_PREFIX + date;
+
+        let currentMessages = readSavedMessages();
+
+        while (currentMessages.length > MAXIMUM_SAVED_MESSAGES) {
+            let oldMessage = currentMessages.shift();
+            sessionStorage.removeItem(oldMessage.key);
+        }
+
+        STORAGE.setItem(key, message);
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+/**
+ * Format a message so that it may be displayed within the output view
+ * @param {string|Date} timestamp
+ * @param {string} message
+ */
+function formatMessage(timestamp, message) {
+    if (timestamp instanceof Date) {
+        timestamp = timestamp.toLocaleString();
+    }
+    const barrier = `//${Array(200).join("=")}`;
+    const timestampLine = `// [${timestamp}]:`
+    let formattedMessage = `${barrier}\n${timestampLine}\n\n${message}`;
+    return `\n${formattedMessage}\n\n`;
+}
+
+/**
+ * Load the receiver code view with stored messages
+ */
+function loadMessages() {
+    try {
+        const formattedMessages = readSavedMessages().map(
+            (message) => formatMessage(message.timestamp, message.message)
+        );
+
+        const newMessage = "".concat(...formattedMessages);
+
+        addMessageToReceiver(newMessage);
+    }
+    catch (e) {
+        console.error(e);
+    }
+}
+
+/**
  * Function to call when a message comes through the websocket
  * @param {Event} event - the data provided by an event handler, like a mouse click
  */
 function receive_message(event) {
-    var formattedData = "";
+    let formattedData = "";
 
     // Try to deserialize and reformat the received data
     try {
         // The received text is most likely a string with little to no newlines. Parse and stringify it to
         //      make sure everything is readable.
-        var data = JSON.parse(event.data);
+        let data = JSON.parse(event.data);
+        let replacementData = markForReplacement(data);
         formattedData = JSON.stringify(data, null, 4);
+        let formattedForReplacement = JSON.stringify(replacementData['message'], null, 4);
+        formattedData = replaceMarkers(formattedForReplacement, replacementData['markers'])
     } catch (exception) {
         // Accept incoming data as a straight string rather than JSON if the deserialization didn't work out
         formattedData = event.data;
     }
 
     // Get and attach the current date and time to the incoming data to make durations more obvious
-    var currentDate = new Date().toLocaleString();
+    let currentDate = new Date().toLocaleString();
 
-    var newMessage = `\n//${Array(200).join("=")}\n// [${currentDate}]:\n\n${formattedData}\n\n`
+    let newMessage = formatMessage(currentDate, formattedData);
 
+    storeMessage(currentDate, formattedData);
+
+    addMessageToReceiver(newMessage);
+}
+
+function addMessageToReceiver(message) {
     // Place the curser at the end of the receiver
     receiver.execCommand("goDocEnd");
 
     // Insert the new text at the end of the editor
-    receiver.replaceRange(newMessage, receiver.getCursor());
+    receiver.replaceRange(message, receiver.getCursor());
 
     // Make sure the data at the end is visible
     receiver.scrollIntoView(receiver.lastLine());
@@ -733,7 +914,7 @@ function launchCommit(event) {
     hidePopups();
 
     // Show the name of the current editor on the popup
-    var editorName = this.getAttribute("editor");
+    let editorName = this.getAttribute("editor");
     $("#editorName").val(editorName);
 
     // Display the popup
@@ -771,8 +952,8 @@ function addTab(event) {
 
     // Get the name and form an ID for it. The difference between the two is that the ID should be able to be a
     //      valid variable name
-    var name = $("#add-popup-name").val();
-    var tabID = name.replaceAll(INVALID_VARIABLE_CHARACTERS, "_");
+    let name = $("#add-popup-name").val();
+    let tabID = name.replaceAll(INVALID_VARIABLE_CHARACTERS, "_");
 
     // Inform the user that the tab can't be added if there's already one with this name and exit
     if (tabID in extraTabEditors) {
@@ -792,17 +973,17 @@ function addTab(event) {
  */
 function resizeEditors(event) {
     // Run the resizing logic on all tabs by first finding all containers for editors
-    for (var tabWithEditor of $(".tab-editor")){
+    for (let tabWithEditor of $(".tab-editor")){
 
         // The outermost DOM element of the editor itself
-        var innerEditor = null;
+        let innerEditor = null;
 
         // The height of all elements that AREN'T the editor
-        var nonEditorHeight = 0;
+        let nonEditorHeight = 0;
 
         // Iterate through all of the children of this container to a) find the editor and b) find the combined
         //      height of all elements that aren't the editor
-        for (var innerElement of tabWithEditor.children) {
+        for (let innerElement of tabWithEditor.children) {
             if (innerElement.classList.contains("CodeMirror")) {
                 innerEditor = innerElement;
             }
@@ -839,7 +1020,7 @@ function deleteTab(event) {
  * @param {Event} event - the data provided by an event handler, like a mouse click
  */
 function addressKeyUp(event) {
-    sessionStorage.setItem(STORED_ADDRESS_KEY, $("#socket-address").val());
+    STORAGE.setItem(STORED_ADDRESS_KEY, $("#socket-address").val());
 }
 
 /**
@@ -854,8 +1035,8 @@ function clearOutput() {
  * @param {Event} event - the data provided by an event handler, like a mouse click
  */
 function updateInput(event) {
-    var inputData = sender.getValue();
-    sessionStorage.setItem(STORED_INPUT_KEY, inputData);
+    let inputData = sender.getValue();
+    STORAGE.setItem(STORED_INPUT_KEY, inputData);
 }
 
 /**
@@ -864,25 +1045,25 @@ function updateInput(event) {
  * @return {Array<string>} The names of all reusable tabs
  */
 function getSavedTabs() {
-    var savedTabNames = sessionStorage.getItem(SAVED_TAB_KEY);
+    let savedTabNames = STORAGE.getItem(SAVED_TAB_KEY);
 
-    if (savedTabNames == null) {
-        sessionStorage.setItem(SAVED_TAB_KEY, []);
+    if (savedTabNames ===null) {
+        STORAGE.setItem(SAVED_TAB_KEY, []);
         savedTabNames = [];
     }
     else {
         savedTabNames = savedTabNames.split(",");
     }
 
-    var validTabNames = [];
+    let validTabNames = [];
     savedTabNames.forEach(function(savedTabName) {
-        var contentKey = EXTRA_STORAGE_KEY + savedTabName;
+        let contentKey = EXTRA_STORAGE_KEY + savedTabName;
 
-        if (contentKey in sessionStorage) {
+        if (contentKey in STORAGE) {
             validTabNames.push(savedTabName);
         }
     });
-    sessionStorage.setItem(SAVED_TAB_KEY, validTabNames);
+    STORAGE.setItem(SAVED_TAB_KEY, validTabNames);
 
     return validTabNames;
 }
@@ -893,11 +1074,11 @@ function getSavedTabs() {
  */
 function addTabRecord(tabName) {
     //  Get all currently saved names - this will either be a string or null since session storage doesn't store arrays
-    var savedTabNames = sessionStorage.getItem(SAVED_TAB_KEY);
+    let savedTabNames = STORAGE.getItem(SAVED_TAB_KEY);
 
     // Add and keep an empty list if no list was found
-    if (savedTabNames == null) {
-        sessionStorage.setItem(SAVED_TAB_KEY, []);
+    if (savedTabNames ===null) {
+        STORAGE.setItem(SAVED_TAB_KEY, []);
         savedTabNames = [];
     }
     else {
@@ -913,22 +1094,22 @@ function addTabRecord(tabName) {
 
     // Create a collection of valid tab names - this list will replace the old list in order to flush any invalid tabs
     // We start with the tab we seek to add since its valid by virtue of getting here
-    var validTabNames = [tabName];
+    let validTabNames = [tabName];
 
     // Iterate through every one of the found tab names and check to see if there is accompanying data
-    for (var savedTabName of savedTabNames) {
+    for (let savedTabName of savedTabNames) {
         // The key for the data isn't the saved tab name; combine it with the prefix to find the real key
-        var contentKey = EXTRA_STORAGE_KEY + savedTabName;
+        let contentKey = EXTRA_STORAGE_KEY + savedTabName;
 
         // The tab/key is considered valid if there is an entry in session storage for the combined key
         // Store the actual name (not the combined name) if it is found
-        if (contentKey in sessionStorage) {
+        if (contentKey in STORAGE) {
             validTabNames.push(savedTabName);
         }
     }
 
     // Update the list of saved tab names with the new list of valid tabs
-    sessionStorage.setItem(SAVED_TAB_KEY, validTabNames);
+    STORAGE.setItem(SAVED_TAB_KEY, validTabNames);
 }
 
 /**
@@ -938,16 +1119,16 @@ function addTabRecord(tabName) {
 function saveCode(event) {
     // This should be triggered by a button click and said button should have an attribute named 'editor',
     //      which will be the name of the editor whose data we need to save
-    var editorName = this.getAttribute("editor");
+    let editorName = this.getAttribute("editor");
 
     // Now that we have the name, get the actual CodeMirror object that accompanies it
-    var editor = getEditor(editorName);
+    let editor = getEditor(editorName);
 
     // Find the key for this editor
-    var saveKey = null;
+    let saveKey = null;
 
     // We have a special key for the sender, so choose that one if the found editor is actually the sender
-    if (editor == sender) {
+    if (editor === sender) {
         saveKey = STORED_INPUT_KEY;
     }
     else {
@@ -956,7 +1137,7 @@ function saveCode(event) {
     }
 
     // Save the value of the editor to session storage
-    sessionStorage.setItem(saveKey, editor.getValue());
+    STORAGE.setItem(saveKey, editor.getValue());
 
     // Make sure that there's a record for the tab whose data was added
     addTabRecord(editorName);
@@ -967,10 +1148,10 @@ function saveCode(event) {
  */
 function getEditor(name) {
     // Get the sender or receiver instances if asked specifically, otherwise pull editor from the name => editor mapping
-    if (name == "sender") {
+    if (name === "sender") {
         return sender;
     }
-    else if (name == "receiver") {
+    else if (name ==="receiver") {
         return receiver;
     }
     else if (name in extraTabEditors) {
@@ -988,10 +1169,10 @@ function getEditor(name) {
 function launchFullscreen(clickEvent){
     // This should be triggered by a button click and said button should have an attribute named 'editor',
     //      which will be the name of the editor whose data we need to save
-    var editorName = this.getAttribute("editor");
+    let editorName = this.getAttribute("editor");
 
     // Now that we have the name, get the actual CodeMirror object that accompanies it
-    var editor = getEditor(editorName);
+    let editor = getEditor(editorName);
 
     // Set the fullscreen option on the editor - this will make sure that it expands to fit the fullscreen
     editor.setOption("fullScreen", true);
@@ -1002,12 +1183,12 @@ function launchFullscreen(clickEvent){
  */
 function loadPreviousTabs() {
     // Get the listing of all current tabs that have values
-    var previousNames = getSavedTabs();
+    let previousNames = getSavedTabs();
 
     // Iterate through every tab and insert an option for it into the #previous-tabs datalist element
-    var dataList = document.getElementById("previous-tabs");
-    for (var name of previousNames) {
-        var option = document.createElement("option");
+    let dataList = document.getElementById("previous-tabs");
+    for (let name of previousNames) {
+        let option = document.createElement("option");
         option.value = name;
         dataList.appendChild(option);
     }
@@ -1100,7 +1281,7 @@ $(function(){
     });
 
     // Try to find a stored address. If found, insert it into the address field. This way the last address may be used
-    var storedAddress = sessionStorage.getItem(STORED_ADDRESS_KEY);
+    let storedAddress = STORAGE.getItem(STORED_ADDRESS_KEY);
 
     if (storedAddress) {
         $("#socket-address").val(storedAddress);
@@ -1108,7 +1289,7 @@ $(function(){
 
     // Try to find the last data written into the primary editor. If found, add it to the primary editor so
     //      that work may be continued. The user can just delete the text if they don't want it.
-    var storedInput = sessionStorage.getItem(STORED_INPUT_KEY);
+    let storedInput = STORAGE.getItem(STORED_INPUT_KEY);
 
     if (storedInput) {
         sender.setValue(storedInput);
@@ -1124,4 +1305,6 @@ $(function(){
 
     // Ensure that every tab fits within its designated space.
     resizeEditors();
+
+    loadMessages();
 });
